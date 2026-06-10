@@ -10,8 +10,18 @@ build/
 venv/
 .env
 
+# 本地使用记录 (包含 API 调用历史)
+usage_history.json
+
 # API Key 配置 (包含敏感信息)
 ~/.deepseek_tray/
+
+# 临时测试文件
+*.credential-helper.*
+create_repo.py
+test_github.py
+test_*.py
+tests/
 
 # IDE
 .vscode/
@@ -23,3 +33,6 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# 计划文件
+.hermes/

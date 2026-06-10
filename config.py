@@ -29,7 +29,13 @@ DEFAULT_CONFIG = {
 
 def validate_api_key(key: str) -> bool:
     """简单校验 API key 格式"""
-    return bool(key) and len(key) >= 10 and key.startswith(("sk-", "deepseek-"))
+    # DeepSeek API Key 通常以 sk- 开头，也可能是其他格式
+    # 只做基本长度和字符检查，不限制前缀
+    if not key or not isinstance(key, str):
+        return False
+    key = key.strip()
+    # DeepSeek API Key 通常长度在 20 以上
+    return len(key) >= 10 and all(c.isprintable() for c in key)
 
 
 def load_config() -> dict:
