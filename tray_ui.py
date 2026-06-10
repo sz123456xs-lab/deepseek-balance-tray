@@ -69,12 +69,9 @@ class DeepSeekTrayApp:
         if self.api_key:
             self.api = DeepSeekAPI(self.api_key)
 
-        # 创建图标
+        # 创建图标（不刷新数据——等 run() 调用后再刷新）
         self.icon = None
         self._create_icon()
-
-        # 立即刷新数据
-        self.refresh_data()
 
     def _create_icon(self):
         icon_image = self._generate_icon("余额")
@@ -86,7 +83,6 @@ class DeepSeekTrayApp:
                 pystray.MenuItem(
                     "📊 查看详情",
                     lambda: self._show_detail_window(),
-                    default=True,
                 ),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem("🔄 刷新数据", lambda: self._on_refresh()),
@@ -97,7 +93,6 @@ class DeepSeekTrayApp:
                 pystray.MenuItem("❌ 退出", lambda: self._on_exit()),
             ),
         )
-        # 注册 pystray 退出时的回调（用户从系统菜单关闭图标时）
         self.icon.on_stop = self._on_icon_stopped
 
     def _generate_icon(self, text: str, bg_color: str = "#4F6EF7") -> Image.Image:
@@ -292,10 +287,32 @@ class DeepSeekTrayApp:
     # ── 运行 ──
 
     def run(self):
-        """运行应用（启动轮播、刷新、然后进入 pystray 消息循环）"""
+        """运行应用（先启动轮播/刷新线程，然后进入 pystray 消息循环）"""
         self._start_scroll_loop()
         self._start_refresh_loop()
+        # pystray 就绪后延时刷新数据（避免 icon.title 未就绪）
+        threading.Thread(target=self._delayed_init, daemon=True).start()
         self.icon.run()
+
+    def _delayed_init(self):
+        """延时初始化：等 pystray 图标就绪后再刷新数据和 tooltip"""
+        time.sleep(1)
+        if self._alive:
+            self.refresh_data()
+
+
+# ═══════════════════════════════════════════════════════════
+# 全局 Tk root (隐藏)，避免 Toplevel 创建默认的 "tk" 窗口
+# ═══════════════════════════════════════════════════════════
+_tk_root = None
+
+def _get_tk_root():
+    """获取或创建隐藏的 Tk root，确保 Toplevel 使用正确父窗口"""
+    global _tk_root
+    if _tk_root is None:
+        _tk_root = tk.Tk()
+        _tk_root.withdraw()  # 隐藏
+    return _tk_root
 
 
 # ═══════════════════════════════════════════════════════════
@@ -305,7 +322,7 @@ class DeepSeekTrayApp:
 class DetailWindow:
     def __init__(self, app: DeepSeekTrayApp):
         self.app = app
-        self.window = tk.Toplevel()
+        self.window = tk.Toplevel(master=_get_tk_root())
         self.window.title("DeepSeek 余额详情")
         self.window.geometry("520x580")
         self.window.resizable(False, False)
@@ -492,7 +509,7 @@ class DetailWindow:
 class SettingsWindow:
     def __init__(self, app: DeepSeekTrayApp):
         self.app = app
-        self.window = tk.Toplevel()
+        self.window = tk.Toplevel(master=_get_tk_root())
         self.window.title("DeepSeek 小工具 - 设置")
         self.window.geometry("480x360")
         self.window.resizable(False, False)
