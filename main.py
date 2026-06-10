@@ -1,7 +1,6 @@
 """
 DeepSeek 余额查询小工具 - 启动入口
 """
-
 import os
 import sys
 
@@ -13,13 +12,14 @@ from tray_ui import DeepSeekTrayApp
 
 def main():
     """主入口"""
-    # 检查是否已有实例在运行 - 使用 socket 锁定（不会残留）
     import socket
 
     lock_port = 28999
     sock = None
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # 允许地址重用，避免强制关闭后端口 TIME_WAIT 导致无法启动
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(("127.0.0.1", lock_port))
         sock.listen(1)
     except OSError:
@@ -42,6 +42,9 @@ def main():
                 sock.close()
         except Exception:
             pass
+
+    # 显式退出进程 (确保 pythonw.exe 不会残留)
+    os._exit(0)
 
 
 if __name__ == "__main__":

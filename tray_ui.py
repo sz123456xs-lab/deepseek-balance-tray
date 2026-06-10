@@ -63,6 +63,7 @@ class DeepSeekTrayApp:
         self.status_index = 0       # 当前轮播位置
         self.scroll_speed = self.config.get("status_bar_scroll_speed", 3)
         self._scroll_active = True  # 轮播运行标记
+        self._scroll_timer = None   # 轮播定时器引用
 
         # 初始化 API 客户端
         self.api = None
@@ -267,17 +268,22 @@ class DeepSeekTrayApp:
     def _update_icon_text(self):
         """根据轮播更新图标文字"""
         if not self._scroll_active:
+            self._scroll_timer = None
             return
-        if self.status_bar_items:
+        if self.status_bar_items and self.icon:
             text = self.status_bar_items[self.status_index % len(self.status_bar_items)]
-            # 取前2个字符作为图标标识
             icon_char = text[:2] if len(text) >= 2 else text[:1]
-            self.icon.icon = self._generate_icon(icon_char)
+            try:
+                self.icon.icon = self._generate_icon(icon_char)
+            except Exception:
+                pass
             self.status_index += 1
 
-        # 定时轮播
-        if self.scroll_speed > 0:
-            threading.Timer(self.scroll_speed, self._update_icon_text).start()
+        # 定时轮播 - 使用 daemon Timer，保存引用以便取消
+        if self.scroll_speed > 0 and self._scroll_active:
+            self._scroll_timer = threading.Timer(self.scroll_speed, self._update_icon_text)
+            self._scroll_timer.daemon = True
+            self._scroll_timer.start()
 
     def _on_refresh(self, icon, item):
         """刷新按钮回调"""
@@ -295,9 +301,19 @@ class DeepSeekTrayApp:
     def _on_exit(self, icon, item):
         """退出程序"""
         self._scroll_active = False
+        if self._scroll_timer:
+            try:
+                self._scroll_timer.cancel()
+            except Exception:
+                pass
+            self._scroll_timer = None
         if self._refresh_timer:
             self._refresh_timer.cancel()
-        self.icon.stop()
+            self._refresh_timer = None
+        try:
+            self.icon.stop()
+        except Exception:
+            pass
 
     def run(self):
         """运行应用"""
