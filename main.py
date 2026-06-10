@@ -13,19 +13,35 @@ from tray_ui import DeepSeekTrayApp
 
 def main():
     """主入口"""
-    # 检查是否已有实例在运行 (简单防止多开)
+    # 检查是否已有实例在运行 - 使用 socket 锁定（不会残留）
     import socket
 
+    lock_port = 28999
+    sock = None
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.bind(("127.0.0.1", 28999))
+        sock.bind(("127.0.0.1", lock_port))
         sock.listen(1)
     except OSError:
         print("程序已在运行中")
         return
+    except Exception as e:
+        print(f"启动检查失败: {e}")
+        return
 
     app = DeepSeekTrayApp()
-    app.run()
+    try:
+        app.run()
+    except Exception as e:
+        print(f"程序运行出错: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        try:
+            if sock:
+                sock.close()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":

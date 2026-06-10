@@ -62,6 +62,7 @@ class DeepSeekTrayApp:
         self.status_bar_items = []  # 轮播文本列表
         self.status_index = 0       # 当前轮播位置
         self.scroll_speed = self.config.get("status_bar_scroll_speed", 3)
+        self._scroll_active = True  # 轮播运行标记
 
         # 初始化 API 客户端
         self.api = None
@@ -265,6 +266,8 @@ class DeepSeekTrayApp:
 
     def _update_icon_text(self):
         """根据轮播更新图标文字"""
+        if not self._scroll_active:
+            return
         if self.status_bar_items:
             text = self.status_bar_items[self.status_index % len(self.status_bar_items)]
             # 取前2个字符作为图标标识
@@ -291,6 +294,7 @@ class DeepSeekTrayApp:
 
     def _on_exit(self, icon, item):
         """退出程序"""
+        self._scroll_active = False
         if self._refresh_timer:
             self._refresh_timer.cancel()
         self.icon.stop()

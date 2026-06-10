@@ -36,3 +36,6 @@ Thumbs.db
 
 # 计划文件
 .hermes/
+
+# 运行时锁文件
+.app.lock
